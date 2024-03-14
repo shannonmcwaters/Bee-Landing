@@ -39,6 +39,9 @@ colnames(VHSuccess)[5] = "Hsuccess"
 VHSuccess = na.omit(VHSuccess) #omit bees that did not visit each type of flower
 wilcox.test(VHSuccess$Vsuccess,VHSuccess$Hsuccess,paired = T)
 
+#first attempt
+chisq.test(table(verthorizfirst$horz0_vert1,verthorizfirst$success))
+
 #box plot of results
 vh = data.frame(Vertical = VHSuccess$Vsuccess, Horizontal = VHSuccess$Hsuccess)
 ggpaired(vh,cond1 = "Vertical",cond2="Horizontal", fill="grey",line.size = 1, point.size = 1.5, line.color="dark grey")+ ylab("Proportion success") + xlab("Flower Orientation") +

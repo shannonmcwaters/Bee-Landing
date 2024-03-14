@@ -5,7 +5,7 @@ library(ggplot2)
 library(tidyr)
 library(ggpubr)
 #raw data table
-LandingData <- read.csv("https://docs.google.com/spreadsheets/d/1VXV89CtOK_Ly8-E8nicnZcj95Qv6uaNwwIp-NS67JFE/gviz/tq?tqx=out:csv")
+LandingData <- read.csv("https://raw.githubusercontent.com/shannonmcwaters/Bee-Landing/main/Labellum%20Data%20(1).csv")
 
 ####Calculate the proporation of choices that are Labellum (L) for each bee ####
 LandingData$numL = str_count(LandingData$Choices.Lip.Nolip.,"L")
@@ -66,6 +66,8 @@ colnames(NLSuccess)[2] = "Lsuccess"
 colnames(NLSuccess)[4] = "Nsuccess"
 NLSuccess = na.omit(NLSuccess) #omit bees that didn't visit each flower type
 wilcox.test(NLSuccess$Lsuccess,NLSuccess$Nsuccess,paired = T)
+#test for just first attempts
+chisq.test(table(firstlanding$Choices,firstlanding$Successes))
 
 #plot results
 nl = data.frame(Labellum = NLSuccess$Lsuccess, NoLabellum = NLSuccess$Nsuccess)
