@@ -5,7 +5,7 @@ library(ggplot2)
 library(tidyr)
 library(ggpubr)
 #read in raw data
-verthorizdata <- read.csv("https://docs.google.com/spreadsheets/d/11Fkfol-iz7tLNeIOv940lRtdSyCHIZH3/gviz/tq?tqx=out:csv")
+verthorizdata <- read.csv("https://raw.githubusercontent.com/shannonmcwaters/Bee-Landing/main/Horizontal%20Landing%20Data%20(1).csv")
 #first attempt only 
 verthorizfirst <- subset(verthorizdata, attemptNr== 1)
 
@@ -41,5 +41,6 @@ wilcox.test(VHSuccess$Vsuccess,VHSuccess$Hsuccess,paired = T)
 
 #box plot of results
 vh = data.frame(Vertical = VHSuccess$Vsuccess, Horizontal = VHSuccess$Hsuccess)
-ggpaired(vh,cond1 = "Vertical",cond2="Horizontal", fill="grey",line.size = 1, point.size = 1.5, line.color="dark grey")+ ylab("Proportion success") + xlab("Flower Orientation") 
+ggpaired(vh,cond1 = "Vertical",cond2="Horizontal", fill="grey",line.size = 1, point.size = 1.5, line.color="dark grey")+ ylab("Proportion success") + xlab("Flower Orientation") +
+  geom_count()
 
