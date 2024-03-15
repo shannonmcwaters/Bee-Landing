@@ -71,7 +71,9 @@ chisq.test(table(firstlanding$Choices,firstlanding$Successes))
 
 #plot results
 nl = data.frame(Labellum = NLSuccess$Lsuccess, NoLabellum = NLSuccess$Nsuccess)
-ggpaired(nl,cond1 = "Labellum",cond2="NoLabellum", fill="grey",line.size = 1, point.size = 1.5, line.color="dark grey") + ylab("Proportion success") + xlab("Flower type")
+ggpaired(nl,cond1 = "Labellum",cond2="NoLabellum", fill="grey",line.size = 1, point.size = 1.5, line.color="dark grey") + 
+  ylab("Proportion success") + xlab("Flower type") +
+  geom_count()
 
 
 ####Side question: Correlation between size and preference or success ####
