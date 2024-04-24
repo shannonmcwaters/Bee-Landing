@@ -31,6 +31,15 @@ HorzChoice = subset(verthorizdata, horz0_vert1 == "0")
 HSuccess = HorzChoice %>% group_by(bee) %>% summarise(across(everything(),mean))
 HSuccess = HSuccess[,c(1,4:5)]
 
+#same as above but for first attempts
+VertfirstChoice = subset(verthorizfirst, horz0_vert1 == "1")
+VfirstSuccess = VertfirstChoice %>% group_by(bee) %>% summarise(across(everything(),mean))
+VfirstSuccess = VfirstSuccess[,c(1,4:5)]
+
+HorzfirstChoice = subset(verthorizfirst, horz0_vert1 == "0")
+HfirstSuccess = HorzfirstChoice %>% group_by(bee) %>% summarise(across(everything(),mean))
+HfirstSuccess = HfirstSuccess[,c(1,4:5)]
+
 #make table with the vertical and horizontal success rate for each bee
 VHSuccess = merge(VSuccess,HSuccess,by="bee", all=T)
 na_count = 
@@ -44,6 +53,6 @@ chisq.test(table(verthorizfirst$horz0_vert1,verthorizfirst$success))
 
 #box plot of results
 vh = data.frame(Vertical = VHSuccess$Vsuccess, Horizontal = VHSuccess$Hsuccess)
-ggpaired(vh,cond1 = "Vertical",cond2="Horizontal", fill="grey",line.size = 1, point.size = 1.5, line.color="dark grey")+ ylab("Proportion success") + xlab("Flower Orientation") +
+Ori_plot = ggpaired(vh,cond1 = "Vertical",cond2="Horizontal", fill="grey",line.size = 1, point.size = 1.5, line.color="dark grey")+ ylab("Proportion success") + xlab("Flower Orientation") +
   geom_count()
 
