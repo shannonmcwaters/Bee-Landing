@@ -107,7 +107,7 @@ size_pref = glm(propL ~ ThoraxWidth.mm.,
     weights = total_choices) 
 summary(size_pref)
 library(ResourceSelection)
-hoslem.test(LandingData$numL, fitted(size_pref))
+hoslem.test(LandingData$propL, fitted(size_pref))
 
 size_success <- glm(propS ~ ThoraxWidth.mm., 
                      family = binomial(link = "logit"), 
@@ -117,7 +117,7 @@ summary(size_success)
 library(ResourceSelection)
 hoslem.test(LandingData$propS, fitted(size_success))
 # Get predicted probabilities
-LandingData$predicted_prob <- predict(mod, type = "response")
+LandingData$predicted_prob <- predict(size_pref, type = "response")
 # Plot the raw data with predicted trend line
 ggplot(LandingData, aes(x = ThoraxWidth.mm., y = propL)) +
   geom_point(color = "black", alpha = 0.4) +  # Set point color to black and remove gradient
@@ -126,3 +126,20 @@ ggplot(LandingData, aes(x = ThoraxWidth.mm., y = propL)) +
   labs(x = "Thorax Width (mm)", y = "Proportion of L Flower Choices") +
   theme_minimal() +
   guides(color = "none")  # Remove legend
+
+#wrangle data so we can look at the interaction between size and flower type on success to see if preference potentially is driven by landing success
+interaction_data <- LandingDataNew %>%
+  group_by(BeeID, Choices) %>%
+  summarise(
+    SuccessRate = mean(Successes),  
+    NumChoices = n(), 
+    .groups = "drop"
+  )
+interaction_data <- interaction_data %>%
+  left_join(LandingDataNew %>% select(BeeID, ThoraxWidth) %>% distinct(), by = "BeeID")
+
+interaction_model = glmer(SuccessRate ~ ThoraxWidth*Choices+(1|BeeID), 
+            family = binomial(link = "logit"), 
+            data = interaction_data, 
+            weights = NumChoices) 
+summary(model)
