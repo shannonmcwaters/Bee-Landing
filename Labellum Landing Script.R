@@ -18,6 +18,9 @@ LandingData$numS = str_count(LandingData$ChoiceSuccess,"S")
 LandingData$numU = str_count(LandingData$ChoiceSuccess,"U")
 LandingData$propS = with(LandingData, (LandingData$numS / (LandingData$numS +LandingData$numU)))
 LandingData$propU = with(LandingData, (LandingData$numU / (LandingData$numS +LandingData$numU)))
+# Add a column for the total number of choices (numL + numN)
+LandingData$total_choices <- LandingData$numL + LandingData$numN
+
 
 #### #make choice strings (L/N & S/U) into individual rows and make new data frame ####
 Choice = strsplit(as.character(LandingData$Choices.Lip.Nolip.), split=",")
@@ -31,7 +34,7 @@ ChoiceNumber = sequence(tabulate(BeeID)) #creates column that numbers the sequen
 #New data frame to use for second analysis:
 LandingDataNew = data.frame(ColonyID,BeeID,ChoiceNumber,Choices, Successes, ThoraxWidth)
 LandingDataNew$Successes= ifelse(LandingDataNew$Successes == "S",1,0)
-
+LandingDataNew$Choices = ifelse(LandingDataNew$Choices == "L", 1,0)
 #Overall success
 mean(LandingDataNew$Successes)
 
@@ -98,19 +101,28 @@ nl = data.frame(Labellum = NLSuccess$Lsuccess, NoLabellum = NLSuccess$Nsuccess)
 Lab_Plot = ggpaired(nl,cond1 = "Labellum",cond2="NoLabellum", fill="grey",line.size = 1, point.size = 1.5, line.color="dark grey") + ylab("Proportion success") + xlab("Flower type") + geom_count() 
 
 ####Side question: Correlation between size and preference or success ####
-size_pref <- glm(cbind(numL, numN) ~ ThoraxWidth.mm., 
-                      data = LandingData, 
-                      family = binomial)
+size_pref = glm(propL ~ ThoraxWidth.mm., 
+    family = binomial(link = "logit"), 
+    data = LandingData, 
+    weights = total_choices) 
 summary(size_pref)
+library(ResourceSelection)
+hoslem.test(LandingData$numL, fitted(size_pref))
 
-size_success <- glm(cbind(numS, numU) ~ ThoraxWidth.mm., 
-               data = LandingData, 
-               family = binomial)
+size_success <- glm(propS ~ ThoraxWidth.mm., 
+                     family = binomial(link = "logit"), 
+                     data = LandingData, 
+                     weights = total_choices)
 summary(size_success)
-
-
-ggplot(LandingData, aes(x=ThoraxWidth.mm., y= propS)) + 
-  geom_point()+
-  geom_smooth(method=lm)+
-  labs(x="Thorax width (mm)", y = "Proportion choices at flower with labellum")
-
+library(ResourceSelection)
+hoslem.test(LandingData$propS, fitted(size_success))
+# Get predicted probabilities
+LandingData$predicted_prob <- predict(mod, type = "response")
+# Plot the raw data with predicted trend line
+ggplot(LandingData, aes(x = ThoraxWidth.mm., y = propL)) +
+  geom_point(color = "black", alpha = 0.4) +  # Set point color to black and remove gradient
+  geom_line(aes(y = predicted_prob), color = "red") +  # Red trend line
+  geom_ribbon(aes(ymin = lower_prob, ymax = upper_prob), fill = "blue", alpha = 0.2) +  # Blue shaded area
+  labs(x = "Thorax Width (mm)", y = "Proportion of L Flower Choices") +
+  theme_minimal() +
+  guides(color = "none")  # Remove legend
