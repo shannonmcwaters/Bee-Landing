@@ -4,6 +4,7 @@ library(dplyr)
 library(ggplot2)
 library(tidyr)
 library(ggpubr)
+library(lme4)
 #raw data table
 LandingData <- read.csv("https://raw.githubusercontent.com/shannonmcwaters/Bee-Landing/main/Labellum%20Data%20(1).csv")
 
@@ -34,17 +35,26 @@ LandingDataNew$Successes= ifelse(LandingDataNew$Successes == "S",1,0)
 #Overall success
 mean(LandingDataNew$Successes)
 
-####Question 1: do bees show a preference for labellums? ####
-
-#test proportion of visits to labellum flowers against 0.5
-wilcox.test(LandingData$propL,mu=0.5)
-boxplot(LandingData$propL, ylab = "Percent of visits to a labellum flower", xlab="Flowers with a Labellum")
-abline(h=0.5, col ="Red") #run this to add a line at 0.5 to the box plot above
-
-#same as above but with first landing only
+#make a first landing dataframe 
 firstlanding = subset(LandingDataNew, ChoiceNumber=="1")
 firstlanding$Choices = ifelse(firstlanding[["Choices"]] == "L", 1,0)
-wilcox.test(firstlanding$Choices,mu=0.5)
+
+####Question 1: do bees show a preference for labellums? ####
+
+
+# Logistic regression for labellum preference
+labellum_pref_model <- glm(cbind(numL, numN) ~ 1, 
+                           data = LandingData, 
+                           family = binomial)
+summary(labellum_pref_model)
+
+
+#same as above but with first landing only
+firstlanding_model <- glm(Choices ~ 1, 
+                          data = firstlanding, 
+                          family = binomial)
+summary(firstlanding_model)
+
 
 ####Question 2: Does the presence of labellum influences landing success? Chi square test####
 
@@ -59,41 +69,48 @@ NSuccess = NoLabellumChoice %>% group_by(BeeID) %>% summarise(across(everything(
 NSuccess = NSuccess[,c(1,4:6)]
 NSuccess$Choices = NSuccess$Choices %>% replace_na(0)
 
+# Paired logistic regression for success on labellum vs. no labellum
+paired_success_model <- glmer(Successes ~ Choices + (1 | BeeID), 
+                              data = LandingDataNew, 
+                              family = binomial)
+summary(paired_success_model)
 
-#same for first landing
+#test for just first attempts
 LabellumfirstChoice = subset(firstlanding, Choices == "1")
 mean(LabellumfirstChoice[["Successes"]])
 
 NoLabellumfirstChoice = subset(firstlanding, Choices == "0")
 mean(NoLabellumfirstChoice[["Successes"]])
 
-#combine above data and test for difference 
+chisq.test(table(firstlanding$Choices,firstlanding$Successes))
+
+#Wrangle data for the plot: 
 NLSuccess = merge(LSuccess,NSuccess,by="BeeID", all=T)
 NLSuccess$ColonyID = NULL
 
 colnames(NLSuccess)[3] = "Lsuccess"
-colnames(NLSuccess)[7] = "Nsuccess"
+colnames(NLSuccess)[6] = "Nsuccess"
 
 NLSuccess = na.omit(NLSuccess) #omit bees that didn't visit each flower type
-wilcox.test(NLSuccess$Lsuccess,NLSuccess$Nsuccess,paired = T)
-#test for just first attempts
-chisq.test(table(firstlanding$Choices,firstlanding$Successes))
 
-#plot results
-nl = data.frame(Labellum = NLSuccess$Lsuccess, NoLabellum = NLSuccess$Nsuccess)
-Lab_Plot = ggpaired(nl,cond1 = "Labellum",cond2="NoLabellum", fill="grey",line.size = 1, point.size = 1.5, line.color="dark grey") + 
-  ylab("Proportion success") + xlab("Flower type") +
-  geom_count()
-
+#plot results 
+nl = data.frame(Labellum = NLSuccess$Lsuccess, NoLabellum = NLSuccess$Nsuccess) 
+Lab_Plot = ggpaired(nl,cond1 = "Labellum",cond2="NoLabellum", fill="grey",line.size = 1, point.size = 1.5, line.color="dark grey") + ylab("Proportion success") + xlab("Flower type") + geom_count() 
 
 ####Side question: Correlation between size and preference or success ####
-summary(lm(LandingData$propL ~LandingData$ThoraxWidth.mm.))
-summary(lm(LandingData$propS ~LandingData$ThoraxWidth.mm.))
+size_pref <- glm(cbind(numL, numN) ~ ThoraxWidth.mm., 
+                      data = LandingData, 
+                      family = binomial)
+summary(size_pref)
 
-df = rbind(LSuccess, NSuccess)
-summary(lm(Successes ~ as.factor(Choices)*ThoraxWidth, data = df))
-ggplot(df, aes(x=ThoraxWidth, y=Successes, col=as.factor(Choices))) + 
+size_success <- glm(cbind(numS, numU) ~ ThoraxWidth.mm., 
+               data = LandingData, 
+               family = binomial)
+summary(size_success)
+
+
+ggplot(LandingData, aes(x=ThoraxWidth.mm., y= propS)) + 
   geom_point()+
   geom_smooth(method=lm)+
-  labs(x="Thorax width (mm)", y = "Proportion successful lands at no labellum flowers", col= "Flower Choice") +
-  scale_color_discrete(labels=c('No labellum', 'Labellum'))
+  labs(x="Thorax width (mm)", y = "Proportion choices at flower with labellum")
+
