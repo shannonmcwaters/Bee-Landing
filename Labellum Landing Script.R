@@ -40,7 +40,6 @@ mean(LandingDataNew$Successes)
 
 #make a first landing dataframe 
 firstlanding = subset(LandingDataNew, ChoiceNumber=="1")
-firstlanding$Choices = ifelse(firstlanding[["Choices"]] == "L", 1,0)
 
 ####Question 1: do bees show a preference for labellums? ####
 
@@ -62,21 +61,21 @@ summary(firstlanding_model)
 ####Question 2: Does the presence of labellum influences landing success? Chi square test####
 
 #make data frame with separate columns for labellum or no labellum success rate for each bee
-LabellumChoice = subset(LandingDataNew, Choices == "L")
+LabellumChoice = subset(LandingDataNew, Choices == "1")
 LSuccess = LabellumChoice %>% group_by(BeeID) %>% summarise(across(everything(),mean))
 LSuccess = LSuccess[,c(1,4:6)]
 LSuccess$Choices = LSuccess$Choices %>% replace_na(1)
 
-NoLabellumChoice = subset(LandingDataNew, Choices == "N")
+NoLabellumChoice = subset(LandingDataNew, Choices == "0")
 NSuccess = NoLabellumChoice %>% group_by(BeeID) %>% summarise(across(everything(),mean))
 NSuccess = NSuccess[,c(1,4:6)]
 NSuccess$Choices = NSuccess$Choices %>% replace_na(0)
 
-# Paired logistic regression for success on labellum vs. no labellum
-paired_success_model <- glmer(Successes ~ Choices + (1 | BeeID), 
+#logistic regression for success on labellum vs. no labellum
+success_model <- glmer(Successes ~ Choices + (1 | BeeID), 
                               data = LandingDataNew, 
                               family = binomial)
-summary(paired_success_model)
+summary(success_model)
 
 #test for just first attempts
 LabellumfirstChoice = subset(firstlanding, Choices == "1")
@@ -94,30 +93,26 @@ NLSuccess$ColonyID = NULL
 colnames(NLSuccess)[3] = "Lsuccess"
 colnames(NLSuccess)[6] = "Nsuccess"
 
-NLSuccess = na.omit(NLSuccess) #omit bees that didn't visit each flower type
-
 #plot results 
 nl = data.frame(Labellum = NLSuccess$Lsuccess, NoLabellum = NLSuccess$Nsuccess) 
 Lab_Plot = ggpaired(nl,cond1 = "Labellum",cond2="NoLabellum", fill="grey",line.size = 1, point.size = 1.5, line.color="dark grey") + ylab("Proportion success") + xlab("Flower type") + geom_count() 
 
 ####Side question: Correlation between size and preference or success ####
 size_pref = glm(propL ~ ThoraxWidth.mm., 
-    family = binomial(link = "logit"), 
+    family = binomial, 
     data = LandingData, 
     weights = total_choices) 
 summary(size_pref)
 library(ResourceSelection)
 hoslem.test(LandingData$propL, fitted(size_pref))
 
-size_success <- glm(propS ~ ThoraxWidth.mm., 
-                     family = binomial(link = "logit"), 
-                     data = LandingData, 
-                     weights = total_choices)
-summary(size_success)
-library(ResourceSelection)
-hoslem.test(LandingData$propS, fitted(size_success))
-# Get predicted probabilities
+# Let's plot the sig. result: 
+#Get predicted probabilities
 LandingData$predicted_prob <- predict(size_pref, type = "response")
+# Calculate the confidence intervals for the predicted probabilities
+link <- predict(size_pref, type = "link", se.fit = TRUE)
+LandingData$lower_prob <- plogis(link$fit - 1.96 * link$se.fit)  # Lower confidence bound
+LandingData$upper_prob <- plogis(link$fit + 1.96 * link$se.fit)  # Upper confidence bound
 # Plot the raw data with predicted trend line
 ggplot(LandingData, aes(x = ThoraxWidth.mm., y = propL)) +
   geom_point(color = "black", alpha = 0.4) +  # Set point color to black and remove gradient
@@ -126,6 +121,16 @@ ggplot(LandingData, aes(x = ThoraxWidth.mm., y = propL)) +
   labs(x = "Thorax Width (mm)", y = "Proportion of L Flower Choices") +
   theme_minimal() +
   guides(color = "none")  # Remove legend
+
+
+size_success <- glm(propS ~ ThoraxWidth.mm., 
+                     family = binomial(link = "logit"), 
+                     data = LandingData, 
+                     weights = total_choices)
+summary(size_success)
+library(ResourceSelection)
+hoslem.test(LandingData$propS, fitted(size_success))
+
 
 #wrangle data so we can look at the interaction between size and flower type on success to see if preference potentially is driven by landing success
 interaction_data <- LandingDataNew %>%
