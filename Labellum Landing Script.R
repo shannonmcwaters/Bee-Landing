@@ -35,8 +35,21 @@ ChoiceNumber = sequence(tabulate(BeeID)) #creates column that numbers the sequen
 LandingDataNew = data.frame(ColonyID,BeeID,ChoiceNumber,Choices, Successes, ThoraxWidth)
 LandingDataNew$Successes= ifelse(LandingDataNew$Successes == "S",1,0)
 LandingDataNew$Choices = ifelse(LandingDataNew$Choices == "L", 1,0)
-#Overall success
-mean(LandingDataNew$Successes)
+
+# overall mean successe
+mean_all_success <- mean(LandingDataNew$Successes)
+
+# Mean successe for labellum
+mean_success_choices_1 <- LandingDataNew %>%
+  filter(Choices == 1) %>%
+  summarise(mean_success = mean(Successes)) %>%
+  pull(mean_success)
+
+# Mean successe no labellum
+mean_success_choices_0 <- LandingDataNew %>%
+  filter(Choices == 0) %>%
+  summarise(mean_success = mean(Successes)) %>%
+  pull(mean_success)
 
 #make a first landing dataframe 
 firstlanding = subset(LandingDataNew, ChoiceNumber=="1")
@@ -61,15 +74,14 @@ summary(firstlanding_model)
 ####Question 2: Does the presence of labellum influences landing success? Chi square test####
 
 #make data frame with separate columns for labellum or no labellum success rate for each bee
-LabellumChoice = subset(LandingDataNew, Choices == "1")
+LabellumChoice = subset(LandingDataNew[,2:6], Choices == "1")
 LSuccess = LabellumChoice %>% group_by(BeeID) %>% summarise(across(everything(),mean))
-LSuccess = LSuccess[,c(1,4:6)]
-LSuccess$Choices = LSuccess$Choices %>% replace_na(1)
 
 NoLabellumChoice = subset(LandingDataNew, Choices == "0")
 NSuccess = NoLabellumChoice %>% group_by(BeeID) %>% summarise(across(everything(),mean))
 NSuccess = NSuccess[,c(1,4:6)]
 NSuccess$Choices = NSuccess$Choices %>% replace_na(0)
+
 
 #logistic regression for success on labellum vs. no labellum
 success_model <- glmer(Successes ~ Choices + (1 | BeeID), 
