@@ -58,8 +58,9 @@ firstlanding = subset(LandingDataNew, ChoiceNumber=="1")
 
 
 # Logistic regression for labellum preference
-labellum_pref_model <- glm(cbind(numL, numN) ~ 1, 
+labellum_pref_model <- glm(propL ~ 1, 
                            data = LandingData, 
+                           weights = total_choices,
                            family = binomial)
 summary(labellum_pref_model)
 
@@ -102,12 +103,46 @@ chisq.test(table(firstlanding$Choices,firstlanding$Successes))
 NLSuccess = merge(LSuccess,NSuccess,by="BeeID", all=T)
 NLSuccess$ColonyID = NULL
 
-colnames(NLSuccess)[3] = "Lsuccess"
-colnames(NLSuccess)[6] = "Nsuccess"
+colnames(NLSuccess)[4] = "Lsuccess"
+colnames(NLSuccess)[7] = "Nsuccess"
 
-#plot results 
+####plot results ####
 nl = data.frame(Labellum = NLSuccess$Lsuccess, NoLabellum = NLSuccess$Nsuccess) 
-Lab_Plot = ggpaired(nl,cond1 = "Labellum",cond2="NoLabellum", fill="grey",line.size = 1, point.size = 1.5, line.color="dark grey") + ylab("Proportion success") + xlab("Flower type") + geom_count() 
+# Calculate the weight (number of overlapping observations)
+nl_summarized <- nl %>%
+  group_by(Labellum, NoLabellum) %>%
+  summarise(Weight = n(), .groups = "drop")  # Count overlapping points
+Lab_Plot <- ggpaired(nl, cond1 = "Labellum", cond2 = "NoLabellum",fill = "grey",line.color = "dark grey") +
+  # Add custom lines with thickness based on weight
+  geom_segment(
+    data = nl_summarized,
+    aes(
+      x = 1, xend = 2,
+      y = Labellum, yend = NoLabellum,
+      linewidth = Weight
+    ),
+    color = "dark grey", inherit.aes = FALSE, alpha = 0.8
+  ) +
+  # Add weighted dots for Labellum
+  geom_count(
+    aes(x = 1, y = Labellum, size = Weight),
+    data = nl_summarized,
+    color = "black", alpha = 0.8, inherit.aes = FALSE
+  ) +
+  # Add weighted dots for NoLabellum
+  geom_count(
+    aes(x = 2, y = NoLabellum, size = Weight),
+    data = nl_summarized,
+    color = "black", alpha = 0.8, inherit.aes = FALSE
+  ) +
+  # Adjust the scales for line width and dot size
+  scale_size(name = "Number of Bees") +         
+  scale_linewidth(name = "Number of Bees") +     
+  ylab("Proportion success") +
+  xlab("Flower type") +
+  theme_minimal()
+
+
 
 ####Side question: Correlation between size and preference or success ####
 size_pref = glm(propL ~ ThoraxWidth.mm., 
@@ -118,30 +153,32 @@ summary(size_pref)
 library(ResourceSelection)
 hoslem.test(LandingData$propL, fitted(size_pref))
 
+
+size_success <- glm(propS ~ ThoraxWidth.mm., 
+                    family = binomial(link = "logit"), 
+                    data = LandingData, 
+                    weights = total_choices)
+summary(size_success)
+library(ResourceSelection)
+hoslem.test(LandingData$propS, fitted(size_success))
+
 # Let's plot the sig. result: 
 #Get predicted probabilities
-LandingData$predicted_prob <- predict(size_pref, type = "response")
+LandingData$predicted_prob <- predict(size_success, type = "response")
 # Calculate the confidence intervals for the predicted probabilities
-link <- predict(size_pref, type = "link", se.fit = TRUE)
+link <- predict(size_success, type = "link", se.fit = TRUE)
 LandingData$lower_prob <- plogis(link$fit - 1.96 * link$se.fit)  # Lower confidence bound
 LandingData$upper_prob <- plogis(link$fit + 1.96 * link$se.fit)  # Upper confidence bound
 # Plot the raw data with predicted trend line
-ggplot(LandingData, aes(x = ThoraxWidth.mm., y = propL)) +
+ggplot(LandingData, aes(x = ThoraxWidth.mm., y = propS)) +
   geom_point(color = "black", alpha = 0.4) +  # Set point color to black and remove gradient
   geom_line(aes(y = predicted_prob), color = "red") +  # Red trend line
   geom_ribbon(aes(ymin = lower_prob, ymax = upper_prob), fill = "blue", alpha = 0.2) +  # Blue shaded area
-  labs(x = "Thorax Width (mm)", y = "Proportion of L Flower Choices") +
+  labs(x = "Thorax Width (mm)", y = "Proportion of Successful Lands") +
   theme_minimal() +
   guides(color = "none")  # Remove legend
 
 
-size_success <- glm(propS ~ ThoraxWidth.mm., 
-                     family = binomial(link = "logit"), 
-                     data = LandingData, 
-                     weights = total_choices)
-summary(size_success)
-library(ResourceSelection)
-hoslem.test(LandingData$propS, fitted(size_success))
 
 
 #wrangle data so we can look at the interaction between size and flower type on success to see if preference potentially is driven by landing success
@@ -160,3 +197,5 @@ interaction_model = glmer(SuccessRate ~ ThoraxWidth*Choices+(1|BeeID),
             data = interaction_data, 
             weights = NumChoices) 
 summary(model)
+
+

@@ -75,7 +75,41 @@ na_count =
 colnames(VHSuccess)[5] = "Hsuccess"
 VHSuccess = na.omit(VHSuccess) #omit bees that did not visit each type of flower
 
+####Paired plot####
 vh = data.frame(Vertical = VHSuccess$Vsuccess, Horizontal = VHSuccess$Hsuccess)
-Ori_plot = ggpaired(vh,cond1 = "Vertical",cond2="Horizontal", fill="grey",line.size = 1, point.size = 1.5, line.color="dark grey")+ ylab("Proportion success") + xlab("Flower Orientation") +
-  geom_count()
+# Calculate the weight (number of overlapping observations)
+vh_summarized <- vh %>%
+  group_by(Vertical, Horizontal) %>%
+  summarise(Weight = n(), .groups = "drop")  # Count overlapping points
+
+Ori_Plot <- ggpaired(vh, cond1 = "Vertical", cond2 = "Horizontal",fill = "grey",line.color = "dark grey") +
+   # Add custom lines with thickness based on weight
+  geom_segment(
+    data = vh_summarized,
+    aes(
+      x = 1, xend = 2,
+      y = Vertical, yend = Horizontal,
+      linewidth = Weight
+    ),
+    color = "dark grey", inherit.aes = FALSE, alpha = 0.8
+  ) +
+  # Add weighted dots for Labellum
+  geom_count(
+    aes(x = 1, y = Vertical, size = Weight),
+    data = vh_summarized,
+    color = "black", alpha = 0.8, inherit.aes = FALSE
+  ) +
+  # Add weighted dots for NoLabellum
+  geom_count(
+    aes(x = 2, y = Horizontal, size = Weight),
+    data = vh_summarized,
+    color = "black", alpha = 0.8, inherit.aes = FALSE
+  ) +
+  # Adjust the scales for line width and dot size
+  scale_size(name = "Number of Bees") +         
+  scale_linewidth(name = "Number of Bees") +     
+  ylab("Proportion success") +
+  xlab("Flower type") +
+  theme_minimal()
+
 
