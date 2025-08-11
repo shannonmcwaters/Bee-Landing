@@ -110,6 +110,12 @@ Ori_Plot <- ggpaired(vh, cond1 = "Vertical", cond2 = "Horizontal",fill = "grey",
   scale_linewidth(name = "Number of Bees") +     
   ylab("Proportion success") +
   xlab("Flower type") +
-  theme_minimal()
+  theme_minimal(base_size = 20) +
+  theme(
+    axis.title = element_text(size = 22),
+    axis.text = element_text(size = 20),
+    legend.title = element_text(size = 20),
+    legend.text = element_text(size = 18)
+  )
 
 
