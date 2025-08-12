@@ -202,6 +202,6 @@ interaction_model = glmer(SuccessRate ~ ThoraxWidth*Choices+(1|BeeID),
             family = binomial(link = "logit"), 
             data = interaction_data, 
             weights = NumChoices) 
-summary(model)
+summary(interaction_model)
 
 
